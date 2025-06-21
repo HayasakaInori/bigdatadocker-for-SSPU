@@ -1,0 +1,99 @@
+zookeeper部分
+RUN sed -i 's/#dataDir=\/tmp\/zookeeper/dataDir=\/opt\/apache-zookeeper-3.8.4-bin/' /opt/apache-zookeeper-3.8.4-bin/conf/zoo.cfg && \
+    echo 'server.0=localhost:2888:3888' >> /opt/apache-zookeeper-3.8.4-bin/conf/zoo.cfg
+不知道这个端口是怎么配置的
+
+#spark部分　上传jar
+#RUN hdfs dfs -mkdir -p /user/spark/directory && \
+    #hdfs dfs -put /opt/spark-3.5.6-bin-hadoop3/jars/* /user/spark/directory
+不知道干什么 ai解释的挺高大上的
+
+#RUN pip3 install phoenixdb
+不想装，要pip3
+
+hive部分
+#RUN cp /opt/apache-hive-4.0.1-bin/hive-env.sh.template /opt/apache-hive-4.0.1-bin/hive-env.sh
+原本在虚拟机里面配这样写没问题，但是在dockerfile里面就写找不到，得进虚拟机里面看是不是得写进脚本里
+#RUN hadoop fs -mkdir -p /user/hive/warehouse
+#RUN hadoop fs -chmod -R 777 /user/hive/warehouse
+#RUN hadoop fs -mkdir -p /tmp/hive/ 
+#RUN hadoop fs -chmod -R 777 /tmp/hive
+#RUN /opt/apache-hive-4.0.1-bin/bin/schematool -initSchema -dbType MySQL
+可能要等到最后才能进行
+
+#Hive整合Hbase
+#RUN hbase shell
+#create 'tablename', cf1'
+#"habse.columns.mapping" = ":key,data:cf1"
+建表映射
+#./hive --service hiveserver2 -hiveconf hive.server2.thrift.port=10000
+连pyhive
+
+kafka部分
+#RUN mkdir /opt/kafka_2.12-3.7.2/logs#感觉没必要
+
+kafka启动脚本
+#!/bin/bash
+ 
+case $1 in
+"start"){
+        for host in hadoop01 hadoop02 hadoop03
+        do
+                echo "正在启动 $host Kafka 服务"
+                ssh $host "source /etc/profile;kafka-server-start.sh -daemon /bigdata/kafka/config/server.properties"
+        done
+};;
+"stop"){
+        for host in hadoop01 hadoop02 hadoop03
+        do
+                echo "正在停止 $host Kafka 服务"
+                ssh $host 'source /etc/profile;kafka-server-stop.sh stop'
+        done
+};;
+*){
+        echo "参数有误，请选择 【start】 或 【stop】！"
+};;
+
+
+flink部分
+#不知道有没有影响
+#RUN sed -i 's/localhost:8081/0.0.0.0:8083/' /opt/flink-1.17.2/conf/masters
+#或者lcoalhost:8083 如果都不行就把端口开回8081
+#没改也没有影响访问webui
+
+sed -i 's/#rest.bind-port: 8083-8090/rest.bind-port: 8080-8090/' /opt/flink-1.17.2/conf/flink-conf.yaml
+#不知道为什么8080-8090不行，估计8080没被占就用了8080了
+
+先配置conf，再连接8083，教程错了
+
+
+
+
+
+#RUN service ssh start启动ssh
+#RUN hdfs namenode -format && \
+    #start-all.sh && \启动hadoop
+    #zkServer.sh start && \启动zookeeper
+    #/opt/spark-3.5.6-bin-hadoop3/sbin/start-all.sh 启动spark
+    #/opt/hbase-2.4.18/bin/start-hbase.sh 启动hbase
+    #/opt/flink-1.17.2/bin/start-cluster.sh 启动flink
+    #找那个老df开phoenix
+    #kf.sh 启动kafka 脚本自己写的
+后台启动项目
+    #hive,phbase,mysql不需要自启动
+    #bin/flume-ng agent -c ./conf -f ./conf/hdfs-avro.conf -n a1 -Dflume.root.logger=INFO,console
+    #flume的启动，要ssh连，不启动
+mysql远程登录
+service start mysqld
+flush privileges;
+ALTER USER 'root'@'localhost' IDENTIFIED BY 'root';
+flush privileges;
+use mysql;
+update user set Host='%' where User='root';
+flush privileges;
+
+
+
+dockercompose问题
+容器名存在了gut下
+
