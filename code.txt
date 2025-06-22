@@ -1,0 +1,408 @@
+docker-compose up -d
+
+docker-compose down --rmi local
+
+
+docker build -t bigdata-docker:v1.0 .
+
+docker run -it --name bigdata-container     bigdata-docker:v1.0
+-p 2181:2181 -p 16010:16010 -p 16020:16020 -p 16030:16030 -p 8080:8080 -p 8085:8085 -p 9090:9090 -p 9095:9095 -p 16000:16000 -p 2222:22 -p 8040:8040 -p 8042:8042 -p 9870:9870  -p 9868:9868  -p 60010:60010 -p 2888:2888 -p 3888:3888 -p 8083:8083 -p : -p :
+2181 8040 8042 9870 9868 8080 9090 16020 16010 16000 60010 8085 9095 22 3888 3888 8081/8083
+
+
+
+
+#配置Hadoop
+vim /opt/hadoop-3.3.6/etc/hadoop/hadoop-env.sh
+
+export export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+export HADOOP_PID_DIR=/opt/hadoop-3.3.6/pids
+export HADOOP_LOG_DIR=/opt/hadoop-3.3.6/logs
+export HDFS_NAMENODE_USER=root
+export HDFS_DATANODE_USER=root
+export HDFS_SECONDARYNAMENODE_USER=root
+export YARN_RESOURCEMANAGER_USER=root
+export YARN_NODEMANAGER_USER=root
+
+
+vim /opt/hadoop-3.3.6/etc/hadoop/core-site.xml
+
+<property>
+        <name>fs.defaultFS</name>
+        <value>hdfs://hadoop336:9000</value>
+    </property>
+    
+    <property>
+        <name>io.file.buffer.size</name>                                
+        <value>131072</value>
+    </property>
+ 
+    <property>
+        <name>hadoop.proxyuser.root.hosts</name>
+        <value>*</value>
+        <description>Hadoop的超级用户root能代理的节点</description>
+    </property>
+ 
+    <property>
+        <name>hadoop.proxyuser.root.groups</name>
+        <value>*</value>
+        <description>Hadoop的超级用户root能代理的用户组</description>
+    </property>
+
+
+vim /opt/hadoop-3.3.6/etc/hadoop/yarn-site.xml
+
+ <property>
+        <name>dfs.replication</name>
+        <value>1</value>
+    </property>
+ 
+    <property>
+        <name>dfs.namenode.name.dir</name>                              
+        <value>/bigdata/hadoop/namenode</value>
+    </property>
+        
+    <property>
+        <name>dfs.blocksize</name>                                      
+        <value>268435456</value>
+    </property>
+ 
+    <property>
+        <name>dfs.namenode.handler.count</name>                 
+        <value>100</value>
+    </property>
+    
+    <property>
+        <name>dfs.datanode.data.dir</name>
+        <value>/bigdata/hadoop/datanode</value>
+    </property>
+
+
+vim /opt/hadoop-3.3.6/etc/hadoop/hdfs-site.xml
+ 
+   <property>
+        <name>dfs.replication</name>
+        <value>1</value>
+    </property>
+ 
+    <property>
+        <name>dfs.namenode.name.dir</name>                              
+        <value>/opt/hadoop-3.3.6/namenode</value>
+    </property>
+        
+    <property>
+        <name>dfs.blocksize</name>                                      
+        <value>268435456</value>
+    </property>
+ 
+    <property>
+        <name>dfs.namenode.handler.count</name>                 
+        <value>100</value>
+    </property>
+    
+    <property>
+        <name>dfs.datanode.data.dir</name>
+        <value>/opt/hadoop-3.3.6/datanode</value>
+    </property>
+
+vim /opt/hadoop-3.3.6/etc/hadoop/mapred-site.xml
+ 
+    <property>
+        <name>mapreduce.framework.name</name>		
+        <value>yarn</value>
+    </property>
+
+vim /opt/hadoop-3.3.6/etc/hadoop/mapred-site.xml
+ 
+    <property>
+        <name>mapreduce.framework.name</name>		
+        <value>yarn</value>
+    </property>
+
+vim  /opt/hadoop-3.3.6/etc/hadoop/yarn-site.xml
+ 
+   <property>
+        <!--NodeManager获取数据的方式-->
+        <name>yarn.nodemanager.aux-services</name>
+        <value>mapreduce_shuffle</value>
+    </property>
+    <!--指定YARN集群的管理者（ResourceManager）的地址-->
+    <property>
+        <name>yarn.resourcemanager.hostname</name>
+        <value>localhost</value>
+    </property>
+ 
+ hdfs namenode -format
+start-dfs.sh
+#配置完毕
+
+#zookeeper
+
+mv /opt/apache-zookeeper-3.8.4-bin/conf/zoo_sample.cfg /opt/apache-zookeeper-3.8.4-bin/conf/zoo.cfg
+vim /opt/apache-zookeeper-3.8.4-bin/conf/zoo.cfg
+
+#Spark 
+cp /opt/spark-3.5.6-bin-hadoop3/conf/spark-env.sh.template /opt/spark-3.5.6-bin-hadoop3/conf/spark-env.sh
+export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+export SCALA_HOME=/opt/scala-2.12.0
+export SPARK_WORKER_MEMORY=1g
+export SPARK_WORKER_CORES=2
+export SPARK_HOME=/opt/spark-3.5.6-bin-hadoop3
+export HADOOP_HOME=/opt/hadoop-3.3.6
+export HADOOP_CONF_DIR=/opt/hadoop-3.3.6
+export YARN_CONF_DIR=/opt/hadoop-3.3.6/etc/hadoop
+
+cp /opt/spark-3.5.6-bin-hadoop3/conf/spark-defaults.conf.template /opt/spark-3.5.6-bin-hadoop3/conf/spark-defaults.conf
+
+spark.eventLog.enabled          true
+spark.eventLog.dir              hdfs://localhost:9000/user/spark/directory
+#spark.pyspark.python            /bigdata/anaconda/envs/py38/bin/python3
+
+#配置hbase,冲突,选新的
+rm /opt/hbase-2.4.18/lib/client-facing-thirdparty/slf4j-reload4j-1.7.33.jar
+
+vim /opt/hbase-2.4.18/conf/hbase-env.sh
+ 
+export HBASE_MANAGES_ZK=false
+export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+export HBASE_CLASSPATH=/opt/hadoop-3.3.6/etc/hadoop
+export HADOOP_HOME=/opt/hadoop-3.3.6
+export HBASE_DISABLE_HADOOP_CLASSPATH_LOOKUP="true"
+
+vim /opt/hbase-2.4.18/conf/hbase-site.xml
+
+<property>
+        <name>hbase.rootdir</name>
+        <value>hdfs://localhost:9000/hbase</value>
+        <description>这个目录是regin server的共享目录，用来持久化Hbase</description>
+</property>
+<property>
+        <name>hbase.cluster.distributed</name>
+        <value>true</value>
+        <description>Hbase的运行模式。false是单机模式，true是分布式模式</description>
+</property>
+<property>
+        <name>hbase.master</name>
+        <value>hdfs://localhost:60000</value>
+        <description>hmaster port</description>
+</property>
+ 
+<property>
+        <name>hbase.zookeeper.quorum</name>
+        <value>localhost</value>
+        <description>zookeeper集群的URL配置，多个host中ian用逗号（,）分割</description>
+</property>
+ 
+<property>
+        <name>hbase.zookeeper.property.dataDir</name>
+        <value>/opt/apache-zookeeper-3.8.4-bin/data</value>
+        <description>zookeepe的zooconf中的配置，快照的存储位置</description>
+</property>
+ 
+<property>
+ <name>hbase.zookeeper.property.clientPort</name>
+  <value>2181</value>
+</property>
+<property>
+  <name>hbase.master.info.port</name>
+  <value>60010</value>
+</property>
+
+cp /opt/hadoop-3.3.6/etc/hadoop/hdfs-site.xml /opt/hbase-2.4.18/conf
+cp /opt/hadoop-3.3.6/etc/hadoop/core-site.xml /opt/hbase-2.4.18/conf
+
+
+cp /opt/apache-hive-4.0.1-bin/hive-env.sh.template /opt/apache-hive-4.0.1-bin/hive-env.sh
+vim /opt/apache-hive-4.0.1-bin/hive-env.sh
+export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+export HIVE_HOME=/opt/apache-hive-4.0.1-bin
+export HIVE_CONF_DIR=/opt/apache-hive-4.0.1-bin/conf
+export HIVE_AUX_JARS_PATH=/opt/apache-hive-4.0.1-bin/lib
+export HADOOP_HOME=/opt/hadoop-3.3.6
+
+vim /opt/apache-hive-4.0.1-bin/conf/hive-site.xml
+        <name>                                       <value>
+hive.exec.local.scratchdir                      /opt/apache-hive-4.0.1-bin/tmp/
+hive.downloaded.resources.dir                   /opt/apache-hive-4.0.1-bin/tmp/${hive.session.id}_resources
+hive.querylog.location                          /opt/apache-hive-4.0.1-bin/tmp/
+hive.server2.logging.operation.log.location     /opt/apache-hive-4.0.1-bin/tmp/root/operation_logs
+javax.jdo.option.ConnectionDriverName           com.mysql.jdbc.Driver
+javax.jdo.option.ConnectionURL                  jdbc:mysql://192.168.100.101:3306/hive?createDatabaseIfNotExist=true&amp;useSSL=false&amp;useUnicode=true&amp;characterEncoding=UTF-8
+javax.jdo.option.ConnectionUserName             root
+javax.jdo.option.ConnectionPassword             root
+
+vim /opt/hadoop-3.3.6/etc/hadoop/yarn-site.xml
+<property>
+    <name>yarn.nodemanager.resource.memory-mb</name>
+    <value>2548</value>
+    <discription>每个节点可用内存,单位MB</discription>
+  </property>
+  <property>
+    <name>yarn.scheduler.minimum-allocation-mb</name>
+    <value>2048</value>
+    <discription>单个任务可申请最少内存，默认1024MB</discription>
+  </property>
+   <property>
+    <name>yarn.scheduler.maximum-allocation-mb</name>
+    <value>8192</value>
+    <discription>单个任务可申请最大内存，默认8192MB</discription>
+  </property>
+vim /opt/hadoop-3.3.6/etc/hadoop/mapred-site.xml
+<property>
+ <name>yarn.app.mapreduce.am.env</name>
+ <value>HADOOP_MAPRED_HOME=/bigdata/hadoop</value>
+ </property>
+ <property>
+ <name>mapreduce.map.env</name>
+<value>HADOOP_MAPRED_HOME=/bigdata/hadoop</value>
+</property>
+<property>
+<name>mapreduce.reduce.env</name>
+<value>HADOOP_MAPRED_HOME=/bigdata/hadoop</value>
+</property>
+
+#添加jdbc驱动包
+/opt/apache-hive-4.0.1-bin/lib
+hadoop fs -mkdir -p /user/hive/warehouse
+hadoop fs -chmod -R 777 /user/hive/warehouse
+hadoop fs -mkdir -p /tmp/hive/ 
+hadoop fs -chmod -R 777 /tmp/hive 
+
+vim etc/mysql/my.cnf
+skip-grant-tables
+[client]
+port=3306
+socket=/var/lib/mysql/mysql.sock
+
+#mysql配置远程登录
+flush privileges;
+ALTER USER 'root'@'localhost' IDENTIFIED BY 'root';
+flush privileges;
+use mysql;
+update user set Host='%' where User='root';
+flush privileges;
+
+vim opt/kafka_2.12-3.7.2/config/server.properties
+
+#kafka启动脚本
+case $1 in
+"start"){
+        for host in hadoop01 hadoop02 hadoop03
+        do
+                echo "正在启动 $host Kafka 服务"
+                ssh $host "source /etc/profile;kafka-server-start.sh -daemon /bigdata/kafka/config/server.properties"
+        done
+};;
+"stop"){
+        for host in hadoop01 hadoop02 hadoop03
+        do
+                echo "正在停止 $host Kafka 服务"
+                ssh $host 'source /etc/profile;kafka-server-stop.sh stop'
+        done
+};;
+*){
+        echo "参数有误，请选择 【start】 或 【stop】！"
+};;
+esac
+
+vim /opt/apache-flume-1.11.0-bin/conf/hdfs-avro.conf
+
+# 定义这个agent的名称
+a1.sources = r1
+a1.sinks = k1
+a1.channels = c1
+# 配置源，用于监控文件
+a1.sources.r1.type = exec
+a1.sources.r1.command = tail -F /opt/apache-flume-1.11.0-bin/test/1.log
+a1.sources.r1.channels = c1
+# 配置接收器，用于HDFS
+a1.sinks.k1.type = hdfs
+a1.sinks.k1.hdfs.path = hdfs://localhost:9000/flume/events/%y-%m-%d/%H-%M
+a1.sinks.k1.hdfs.filePrefix = events-
+a1.sinks.k1.hdfs.round = true
+a1.sinks.k1.hdfs.roundValue = 10
+a1.sinks.k1.hdfs.roundUnit = minute
+a1.sinks.k1.hdfs.rollInterval = 0
+a1.sinks.k1.hdfs.rollSize = 1024
+a1.sinks.k1.hdfs.rollCount = 0
+a1.sinks.k1.hdfs.useLocalTimeStamp = true
+a1.sinks.k1.channel = c1
+# 配置通道，内存型
+a1.channels.c1.type = memory
+a1.channels.c1.capacity = 1000
+a1.channels.c1.transactionCapacity = 100
+# 绑定源和接收器到通道
+a1.sources.r1.channels = c1
+a1.sinks.k1.channel = c1
+
+/opt/apache-flume-1.11.0-bin/bin/flume-ng agent -c ./conf -f ./conf/hdfs-avro.conf -n a1 -Dflume.root.logger=INFO,console
+#要新开一个连着测，别测
+
+
+#他port给注释了没开也没改
+vim /opt/flink-1.17.2/conf/flink-conf.yaml
+
+/opt/flink-1.17.2/bin/start-cluster.sh
+/opt/flink-1.17.2/conf/flink-conf.yaml
+
+jobmanager.rpc.address: 0.0.0.0
+jobmanager.bind-host: 0.0.0.0
+taskmanager.bind-host: 0.0.0.0
+taskmanager.host: 0.0.0.0
+rest.port:8083
+rest.address: 0.0.0.0
+rest.bind-port: 8080-8090
+rest.bind-address: 0.0.0.0
+
+
+
+service ssh start
+start-all.sh
+zkServer.sh start
+/opt/spark-3.5.6-bin-hadoop3/sbin/start-all.sh
+/opt/hbase-2.4.18/bin/start-hbase.sh
+/opt/phoenix-hbase-2.1-5.1.3-bin/bin/sqlline.py localhost
+python2 /opt/phoenix-queryserver-6.0.0/bin/queryserver.py start
+
+Hadoop
+
+HDFS NameNode UI : 9870
+HDFS DataNode : 50010 数据传输
+HDFS DataNode : 50020 数据节点通信
+HDFS Secondary NameNode : 9868
+YARN ResourceManager UI : 8088
+YARN NodeManager : 8042
+3981113562
+8040 8042 9870 9868 
+
+
+
+HBase
+
+HBase Master UI : 16010
+HBase RegionServer : 16020
+HBase Thrift Server : 9090
+HBase REST Server : 8080
+
+Kafka
+
+Kafka Broker : 9092
+Kafka Zookeeper : 2181 Zookeeper客户端端口
+Kafka Controller : 2888 Zookeeper服务器之间通信端口
+Kafka Controller: 3888 Zookeeper选举端口
+
+Spark
+
+Spark Master UI : 8080
+Spark Worker UI : 8081 可更改
+Spark History Server : 18080
+
+Flink
+
+Flink JobManager UI : 8081
+Flink TaskManager : 6121
+
+2181
+16030
+8085
+16000

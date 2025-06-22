@@ -34,7 +34,7 @@ COPY spark-3.5.6-bin-hadoop3.tgz /install/
 COPY hbase-2.4.18-bin.tar.gz /install/ 
 COPY kafka_2.12-3.7.2.tgz /install/ 
 COPY flink-1.17.2-bin-scala_2.12.tgz /install/ 
-COPY phoenix-hbase-2.1-5.1.3-bin.tar.gz /install/ 
+COPY phoenix-hbase-2.4-5.2.1-bin.tar.gz /install/ 
 COPY phoenix-queryserver-6.0.0-bin.tar.gz /install/ 
 COPY apache-zookeeper-3.8.4-bin.tar.gz /install/ 
 COPY scala-2.12.0.tgz /install/ 
@@ -93,7 +93,7 @@ RUN service mysql start
 RUN tar -xzf /install/apache-hive-4.0.1-bin.tar.gz -C /opt/
     #rm /install/apache-hive-4.0.1-bin.tar.gz
 ENV HADOOP_HOME=/opt/hadoop-3.3.6
-ENV HADOOP_CONF_DIR=${HADOOP_HOME}/etc/Hadoop
+ENV HADOOP_CONF_DIR=${HADOOP_HOME}/etc/hadoop
 ENV HADOOP_OPTS="-Djava.library.path=${HADOOP_HOME}/lib"
 ENV HIVE_HOME=/opt/apache-hive-4.0.1-bin
 ENV HIVE_CONF_DIR=${HIVE_HOME}/conf
@@ -104,7 +104,7 @@ ENV PATH=.:$JAVA_HOME/bin:$JRE_HOME/bin:$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$HIVE
 # 安装Kafka
 RUN tar -xzf /install/kafka_2.12-3.7.2.tgz -C /opt/ 
     #rm /install/kafka_2.12-3.7.2.tgz
-ENV KAFKA_HOME=/opt//kafka_2.12-3.7.2
+ENV KAFKA_HOME=/opt/kafka_2.12-3.7.2
 ENV PATH=$PATH:$KAFKA_HOME/bin
 
 
@@ -123,15 +123,15 @@ ENV PATH=$PATH:$FLUME_HOME/bin
 
 
 # 安装Phoenix 
-RUN tar -xzf /install/phoenix-hbase-2.1-5.1.3-bin.tar.gz -C /opt
+RUN tar -xzf /install/phoenix-hbase-2.4-5.2.1-bin.tar.gz -C /opt
 # 复制 JAR 文件到 HBase 库目录
-RUN cp /opt/phoenix-hbase-2.1-5.1.3-bin/phoenix-server-hbase-2.1-5.1.3.jar /opt/hbase-2.4.18/lib/ && \
-    cp /opt/phoenix-hbase-2.1-5.1.3-bin/phoenix-pherf-5.1.3.jar /opt/hbase-2.4.18/lib/
+RUN cp /opt/phoenix-hbase-2.4-5.2.1-bin/phoenix-server-hbase-2.4-5.2.1.jar /opt/hbase-2.4.18/lib/ && \
+    cp /opt/phoenix-hbase-2.4-5.2.1-bin/phoenix-pherf-5.2.1.jar /opt/hbase-2.4.18/lib/
 
 
 # 安装Queryserver
 RUN tar -xzf /install/phoenix-queryserver-6.0.0-bin.tar.gz -C /opt
-RUN cp /opt/phoenix-hbase-2.1-5.1.3-bin/phoenix-client-hbase-2.1-5.1.3.jar /opt/phoenix-queryserver-6.0.0
+RUN cp /opt/phoenix-hbase-2.4-5.2.1-bin/phoenix-client-lite-hbase-2.4-5.2.1.jar /opt/phoenix-queryserver-6.0.0
 
 
 
@@ -227,11 +227,14 @@ RUN sed -i '/<\/configuration>/i\<property>\n\
 #配置Zookeeper
 RUN mv /opt/apache-zookeeper-3.8.4-bin/conf/zoo_sample.cfg /opt/apache-zookeeper-3.8.4-bin/conf/zoo.cfg
 
+RUN mkdir /opt/apache-zookeeper-3.8.4-bin/data
+
 RUN sed -i 's/#dataDir=\/tmp\/zookeeper/dataDir=\/opt\/apache-zookeeper-3.8.4-bin/' /opt/apache-zookeeper-3.8.4-bin/conf/zoo.cfg && \
     echo 'server.0=localhost:2888:3888' >> /opt/apache-zookeeper-3.8.4-bin/conf/zoo.cfg
 
-RUN echo '0' >> /opt/apache-zookeeper-3.8.4-bin/data
+RUN echo '0' >> /opt/apache-zookeeper-3.8.4-bin/data/myid
 #不清楚分发和myid是否必须
+#myid必须
 
 
 #配置Spark 
@@ -265,6 +268,7 @@ RUN pip3 install --default-timeout=100 /install/pyspark-4.0.0.tar.gz
 #配置Hbase
 RUN rm /opt/hbase-2.4.18/lib/client-facing-thirdparty/slf4j-reload4j-1.7.33.jar
 
+#测试echo 'export HBASE_CLASSPATH=/opt/hadoop-3.3.6/etc/hadoop' >> /opt/hbase-2.4.18/conf/hbase-env.sh && \是否正确
 RUN echo 'export HBASE_MANAGES_ZK=false' >> /opt/hbase-2.4.18/conf/hbase-env.sh && \
     echo 'export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64' >> /opt/hbase-2.4.18/conf/hbase-env.sh && \
     echo 'export HBASE_CLASSPATH=/opt/hadoop-3.3.6/etc/hadoop' >> /opt/hbase-2.4.18/conf/hbase-env.sh && \
@@ -273,13 +277,13 @@ RUN echo 'export HBASE_MANAGES_ZK=false' >> /opt/hbase-2.4.18/conf/hbase-env.sh 
 
 RUN sed -i '/<\/configuration>/i\
 <property>\n\
-        <name>hbase.rootdir</name>\n\
+        <name>hbase.rootdir</name>\n\	
         <value>hdfs://localhost:9000/hbase</value>\n\
         <description>这个目录是region server的共享目录，用来持久化Hbase</description>\n\
 </property>\n\
 <property>\n\
         <name>hbase.cluster.distributed</name>\n\
-        <value>true</value>\n\
+        <value>false</value>\n\
         <description>Hbase的运行模式。false是单机模式，true是分布式模式</description>\n\
 </property>\n\
 <property>\n\
@@ -313,6 +317,7 @@ RUN sed -i '/<\/configuration>/i\
 RUN cp /opt/hadoop-3.3.6/etc/hadoop/hdfs-site.xml /opt/hbase-2.4.18/conf
 RUN cp /opt/hadoop-3.3.6/etc/hadoop/core-site.xml /opt/hbase-2.4.18/conf
 
+
 #配置Phoenix
 RUN sed -i '/<\/configuration>/i\<property>\n\
   <name>hbase.regionserver.wal.codec</name>\n\
@@ -330,17 +335,27 @@ RUN /opt/hbase-2.4.18/bin/stop-hbase.sh && \
 
 
 #配置MySQL
-RUN echo "[mysqld]" > /etc/mysql/my.cnf && \
-    echo "skip-grant-tables" >> /etc/mysql/my.cnf && \
-    echo "" >> /etc/mysql/my.cnf && \
-    echo "[client]" >> /etc/mysql/my.cnf && \
-    echo "port=3306" >> /etc/mysql/my.cnf && \
-    echo "socket=/var/lib/mysql/mysql.sock" >> /etc/mysql/my.cnf
+RUN sed -i 's/^# *pid-file *=.*/pid-file      = \/var\/run\/mysqld\/mysqld.pid/' /etc/mysql/mysql.conf.d/mysqld.cnf && \
+    sed -i 's/^# *socket *=.*/socket = \/var\/run\/mysqld\/mysqld.sock/' /etc/mysql/mysql.conf.d/mysqld.cnf && \
+    sed -i 's/^# *port *=.*/port           = 3306/' /etc/mysql/mysql.conf.d/mysqld.cnf && \
+    sed -i 's/^# *datadir *=.*/datadir        = \/var\/lib\/mysql/' /etc/mysql/mysql.conf.d/mysqld.cnf && \
+    sed -i 's/^bind-address *=.*/bind-address            = 0.0.0.0/' /etc/mysql/mysql.conf.d/mysqld.cnf && \
+    sed -i 's/^mysqlx-bind-address *=.*/mysqlx-bind-address     = 0.0.0.0/' /etc/mysql/mysql.conf.d/mysqld.cnf
+
+RUN echo "" >> /etc/mysql/mysql.conf.d/mysqld.cnf && \
+    echo "[client]" >> /etc/mysql/mysql.conf.d/mysqld.cnf && \
+    echo "port=3306" >> /etc/mysql/mysql.conf.d/mysqld.cnf && \
+    echo "socket = /var/run/mysqld/mysqld.sock" >> /etc/mysql/mysql.conf.d/mysqld.cnf
+
+#echo "skip-grant-tables" >> /etc/mysql/mysql.conf.d/mysqld.cnf && \不能加，加了不监听端口
+
+
 #还有一个启动脚本
 
 
 #配置Hive
-#RUN cp /opt/apache-hive-4.0.1-bin/hive-env.sh.template /opt/apache-hive-4.0.1-bin/hive-env.sh
+RUN cp /opt/apache-hive-4.0.1-bin/conf/hive-env.sh.template /opt/apache-hive-4.0.1-bin/conf/hive-env.sh
+RUN rm /opt/apache-hive-4.0.1-bin/lib/log4j-slf4j-impl-2.18.0.jar
 
 RUN echo 'export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64' >> /opt/apache-hive-4.0.1-bin/hive-env.sh && \
     echo 'export HIVE_HOME=/opt/apache-hive-4.0.1-bin' >> /opt/apache-hive-4.0.1-bin/hive-env.sh && \
@@ -372,7 +387,7 @@ RUN sed -i '/<\/configuration>/i\<property>\n\
     </property>\n\
     <property>\n\
         <name>javax.jdo.option.ConnectionURL</name>\n\
-        <value>jdbc:mysql://192.168.100.101:3306/hive?createDatabaseIfNotExist=true&amp;useSSL=false&amp;useUnicode=true&amp;characterEncoding=UTF-8</value>\n\
+        <value>jdbc:mysql://localhost:3306/hive?createDatabaseIfNotExist=true&amp;useSSL=false&amp;useUnicode=true&amp;characterEncoding=UTF-8</value>\n\
     </property>\n\
     <property>\n\
         <name>javax.jdo.option.ConnectionUserName</name>\n\
@@ -401,18 +416,18 @@ RUN sed -i '/<\/configuration>/i\  <property>\n\
 
 RUN sed -i '/<\/configuration>/i\  <property>\n\
     <name>yarn.app.mapreduce.am.env</name>\n\
-    <value>HADOOP_MAPRED_HOME=/bigdata/hadoop</value>\n\
+    <value>HADOOP_MAPRED_HOME=/opt/hadoop-3.3.6</value>\n\
   </property>\n\
   <property>\n\
     <name>mapreduce.map.env</name>\n\
-    <value>HADOOP_MAPRED_HOME=/bigdata/hadoop</value>\n\
+    <value>HADOOP_MAPRED_HOME=/opt/hadoop-3.3.6</value>\n\
   </property>\n\
   <property>\n\
     <name>mapreduce.reduce.env</name>\n\
-    <value>HADOOP_MAPRED_HOME=/bigdata/hadoop</value>\n\
+    <value>HADOOP_MAPRED_HOME=/opt/hadoop-3.3.6</value>\n\
   </property>' /opt/hadoop-3.3.6/etc/hadoop/mapred-site.xml
 
-RUN cp /install/mysql-connector-java-8.0.18.jar /opt/apache-hive-4.0.1-bin
+RUN cp /install/mysql-connector-java-8.0.18.jar /opt/apache-hive-4.0.1-bin/lib
 
 #由于在该配置文件中有如下两个配置项注明了hive在HDFS中数据存储的目录，因此我们需要在HDFS上手动创建并赋权限，也就是需要在hdfs上创建/tmp/hive 和/user/hive/warehouse
 #RUN hadoop fs -mkdir -p /user/hive/warehouse
@@ -520,5 +535,9 @@ RUN ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa && \
 # 设置工作目录
 WORKDIR /root
 
+#添加启动脚本
+ #COPY entrypoint.sh /
+
 # 定义默认命令
+#ENTRYPOINT ["/entrypoint.sh"]
 CMD ["/bin/bash"]

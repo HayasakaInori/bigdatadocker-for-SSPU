@@ -1,3 +1,20 @@
+1.hive连MySQL
+#echo "skip-grant-tables" >> /etc/mysql/mysql.conf.d/mysqld.cnf && \不能加，加了不监听端口
+2.phbase开一半
+3.habse启动问题
+#可能是版本对不上
+
+
+/opt/apache-hive-4.0.1-bin/bin/schematool -initSchema -dbType mysql
+ vim /etc/mysql/mysql.conf.d/mysqld.cnf
+cat /var/log/mysql/error.log
+service mysql status
+
+
+
+
+
+
 zookeeper部分
 RUN sed -i 's/#dataDir=\/tmp\/zookeeper/dataDir=\/opt\/apache-zookeeper-3.8.4-bin/' /opt/apache-zookeeper-3.8.4-bin/conf/zoo.cfg && \
     echo 'server.0=localhost:2888:3888' >> /opt/apache-zookeeper-3.8.4-bin/conf/zoo.cfg
@@ -12,13 +29,24 @@ RUN sed -i 's/#dataDir=\/tmp\/zookeeper/dataDir=\/opt\/apache-zookeeper-3.8.4-bi
 不想装，要pip3
 
 hive部分
-#RUN cp /opt/apache-hive-4.0.1-bin/hive-env.sh.template /opt/apache-hive-4.0.1-bin/hive-env.sh
-原本在虚拟机里面配这样写没问题，但是在dockerfile里面就写找不到，得进虚拟机里面看是不是得写进脚本里
+已解决		#RUN cp /opt/apache-hive-4.0.1-bin/hive-env.sh.template /opt/apache-hive-4.0.1-bin/hive-env.sh
+			原本在虚拟机里面配这样写没问题，但是在dockerfile里面就写找不到，得进虚拟机里面看是不是得写进脚本里
+			//路径错误
+
+#没做，hive也启动成功了
 #RUN hadoop fs -mkdir -p /user/hive/warehouse
 #RUN hadoop fs -chmod -R 777 /user/hive/warehouse
 #RUN hadoop fs -mkdir -p /tmp/hive/ 
 #RUN hadoop fs -chmod -R 777 /tmp/hive
-#RUN /opt/apache-hive-4.0.1-bin/bin/schematool -initSchema -dbType MySQL
+//先执行这些
+flush privileges;
+ALTER USER 'root'@'localhost' IDENTIFIED BY 'root';
+flush privileges;
+use mysql;
+update user set Host='%' where User='root';
+flush privileges;
+才能跑通这个
+#RUN /opt/apache-hive-4.0.1-bin/bin/schematool -initSchema -dbType mysql
 可能要等到最后才能进行
 
 #Hive整合Hbase
@@ -32,27 +60,30 @@ hive部分
 kafka部分
 #RUN mkdir /opt/kafka_2.12-3.7.2/logs#感觉没必要
 
-kafka启动脚本
+#已解决
+kafka启动脚本//脚本规则如何
 #!/bin/bash
- 
+
 case $1 in
-"start"){
-        for host in hadoop01 hadoop02 hadoop03
+"start")
+        for host in localhost
         do
                 echo "正在启动 $host Kafka 服务"
-                ssh $host "source /etc/profile;kafka-server-start.sh -daemon /bigdata/kafka/config/server.properties"
+                ssh $host "/opt/kafka_2.12-3.7.2/bin/kafka-server-start.sh -daemon /opt/kafka_2.12-3.7.2/config/server.properties"
         done
-};;
-"stop"){
-        for host in hadoop01 hadoop02 hadoop03
+        ;;
+"stop")
+        for host in localhost
         do
                 echo "正在停止 $host Kafka 服务"
-                ssh $host 'source /etc/profile;kafka-server-stop.sh stop'
+                ssh $host '/opt/kafka_2.12-3.7.2/bin/kafka-server-stop.sh'
         done
-};;
-*){
+        ;;
+*)
         echo "参数有误，请选择 【start】 或 【stop】！"
-};;
+        ;;
+esac
+ chmod +x kf.sh
 
 
 flink部分
@@ -71,18 +102,39 @@ sed -i 's/#rest.bind-port: 8083-8090/rest.bind-port: 8080-8090/' /opt/flink-1.17
 
 
 #RUN service ssh start启动ssh
-#RUN hdfs namenode -format && \
-    #start-all.sh && \启动hadoop
-    #zkServer.sh start && \启动zookeeper
-    #/opt/spark-3.5.6-bin-hadoop3/sbin/start-all.sh 启动spark
-    #/opt/hbase-2.4.18/bin/start-hbase.sh 启动hbase
-    #/opt/flink-1.17.2/bin/start-cluster.sh 启动flink
-    #找那个老df开phoenix
-    #kf.sh 启动kafka 脚本自己写的
+#RUN 
+已启动#hdfs namenode -format && \
+已启动#start-all.sh && \启动hadoop
+已启动#zkServer.sh start && \启动zookeeper
+已启动#/opt/spark-3.5.6-bin-hadoop3/sbin/start-all.sh 启动spark
+报错#/opt/hbase-2.4.18/bin/start-hbase.sh 启动hbase #从上往下启动到这发现已经启动了hbase/386 DataNode已存在
+	//首个启动时不会出现问题，但依旧报错无法找到日志配置文件，目前来看无所谓
+	//怎么hadoop启动的时候要连ssh这玩意不需要还不报错
+	//他根本不需要datanode啊启动的时候就启动了hmaster和hregionserver这俩
+	//报错了启动也正常不管他了
+已启动#/opt/flink-1.17.2/bin/start-cluster.sh 启动flink
+已启动#python2 /opt/phoenix-queryserver-6.0.0/bin/queryserver.py start
+已启动#kf.sh 启动kafka 脚本自己写的
+	
+hbase分开启动命令
+/opt/hbase-2.4.18/bin/hbase-daemon.sh start master
+/opt/hbase-2.4.18/bin/hbase-daemon.sh start regionserver
+/opt/hbase-2.4.18/bin/hbase-daemon.sh start thrift
+
+
+
+
 后台启动项目
     #hive,phbase,mysql不需要自启动
+已启动#hive: /opt/apache-hive-4.0.1-bin/bin/hive
+未成功#phbase:/opt/phoenix-hbase-2.1-5.1.3-bin/bin/sqlline.py localhost
+	//需要先从ssh启动到hbase，除了spark
+	//启动后只能连接一半，最后的页面出不来不知道是不是phoneixdb的问题
+#MySQL:service mysql start 
     #bin/flume-ng agent -c ./conf -f ./conf/hdfs-avro.conf -n a1 -Dflume.root.logger=INFO,console
-    #flume的启动，要ssh连，不启动
+    //flume的启动，要ssh连，不启动
+
+
 mysql远程登录
 service start mysqld
 flush privileges;
