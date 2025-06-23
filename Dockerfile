@@ -31,10 +31,10 @@ RUN mkdir -p /opt && \
 # 从本地复制安装包到容器中
 COPY hadoop-3.3.6.tar.gz /install/ 
 COPY spark-3.5.6-bin-hadoop3.tgz /install/ 
-COPY hbase-2.4.18-bin.tar.gz /install/ 
+COPY hbase-2.5.11-bin.tar.gz /install/ 
 COPY kafka_2.12-3.7.2.tgz /install/ 
 COPY flink-1.17.2-bin-scala_2.12.tgz /install/ 
-COPY phoenix-hbase-2.4-5.2.1-bin.tar.gz /install/ 
+COPY phoenix-hbase-2.5-5.2.1-bin.tar.gz /install/ 
 COPY phoenix-queryserver-6.0.0-bin.tar.gz /install/ 
 COPY apache-zookeeper-3.8.4-bin.tar.gz /install/ 
 COPY scala-2.12.0.tgz /install/ 
@@ -75,9 +75,9 @@ ENV PATH=$PATH:$SPARK_HOME/bin:$SPARK_HOME/sbin
 
 
 # 安装HBase
-RUN tar -xzf /install/hbase-2.4.18-bin.tar.gz -C /opt/ 
-    #rm /install/hbase-2.4.18-bin.tar.gz
-ENV HBASE_HOME=/opt/hbase-2.4.18
+RUN tar -xzf /install/hbase-2.5.11-bin.tar.gz -C /opt/ 
+    #rm /install/hbase-2.5.11-bin.tar.gz
+ENV HBASE_HOME=/opt/hbase-2.5.11
 ENV PATH=$PATH:$HBASE_HOME/bin
 
 
@@ -98,6 +98,7 @@ ENV HADOOP_OPTS="-Djava.library.path=${HADOOP_HOME}/lib"
 ENV HIVE_HOME=/opt/apache-hive-4.0.1-bin
 ENV HIVE_CONF_DIR=${HIVE_HOME}/conf
 ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+ENV JRE_HOME=/usr/lib/jvm/java-11-openjdk-amd64
 ENV PATH=.:$JAVA_HOME/bin:$JRE_HOME/bin:$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$HIVE_HOME/bin:$PATH
 
 
@@ -117,21 +118,21 @@ ENV PATH=$PATH:$FLINK_HOME/bin
 
 #安装Flume
 RUN tar -xzf /install/apache-flume-1.11.0-bin.tar.gz -C /opt/
-ENV FLUME_HOME = /opt/apache-flume-1.11.0-bin
+ENV FLUME_HOME=/opt/apache-flume-1.11.0-bin
 ENV FLUME_CONF_DIR=$FLUME_HOME/conf
 ENV PATH=$PATH:$FLUME_HOME/bin
 
 
 # 安装Phoenix 
-RUN tar -xzf /install/phoenix-hbase-2.4-5.2.1-bin.tar.gz -C /opt
+RUN tar -xzf /install/phoenix-hbase-2.5-5.2.1-bin.tar.gz -C /opt
 # 复制 JAR 文件到 HBase 库目录
-RUN cp /opt/phoenix-hbase-2.4-5.2.1-bin/phoenix-server-hbase-2.4-5.2.1.jar /opt/hbase-2.4.18/lib/ && \
-    cp /opt/phoenix-hbase-2.4-5.2.1-bin/phoenix-pherf-5.2.1.jar /opt/hbase-2.4.18/lib/
+RUN cp /opt/phoenix-hbase-2.5-5.2.1-bin/phoenix-server-hbase-2.5-5.2.1.jar /opt/hbase-2.5.11/lib/ && \
+    cp /opt/phoenix-hbase-2.5-5.2.1-bin/phoenix-pherf-5.2.1.jar /opt/hbase-2.5.11/lib/
 
 
 # 安装Queryserver
 RUN tar -xzf /install/phoenix-queryserver-6.0.0-bin.tar.gz -C /opt
-RUN cp /opt/phoenix-hbase-2.4-5.2.1-bin/phoenix-client-lite-hbase-2.4-5.2.1.jar /opt/phoenix-queryserver-6.0.0
+RUN cp /opt/phoenix-hbase-2.5-5.2.1-bin/phoenix-client-lite-hbase-2.5-5.2.1.jar /opt/phoenix-queryserver-6.0.0
 
 
 
@@ -207,7 +208,7 @@ RUN sed -i '/<\/configuration>/i\<property>\n\
     </property>' /opt/hadoop-3.3.6/etc/hadoop/hdfs-site.xml
 
 RUN sed -i '/<\/configuration>/i\<property>\n\
-        <name>\n\mapreduce.framework.name</name>\n\
+        <name>mapreduce.framework.name</name>\n\
         <value>yarn</value>\n\
     </property>' /opt/hadoop-3.3.6/etc/hadoop/mapred-site.xml
 
@@ -229,7 +230,7 @@ RUN mv /opt/apache-zookeeper-3.8.4-bin/conf/zoo_sample.cfg /opt/apache-zookeeper
 
 RUN mkdir /opt/apache-zookeeper-3.8.4-bin/data
 
-RUN sed -i 's/#dataDir=\/tmp\/zookeeper/dataDir=\/opt\/apache-zookeeper-3.8.4-bin/' /opt/apache-zookeeper-3.8.4-bin/conf/zoo.cfg && \
+RUN sed -i 's/dataDir=\/tmp\/zookeeper/dataDir=\/opt\/apache-zookeeper-3.8.4-bin\/data/' /opt/apache-zookeeper-3.8.4-bin/conf/zoo.cfg && \
     echo 'server.0=localhost:2888:3888' >> /opt/apache-zookeeper-3.8.4-bin/conf/zoo.cfg
 
 RUN echo '0' >> /opt/apache-zookeeper-3.8.4-bin/data/myid
@@ -262,18 +263,17 @@ RUN echo 'spark.eventLog.enabled          true' >> /opt/spark-3.5.6-bin-hadoop3/
 RUN cp /opt/spark-3.5.6-bin-hadoop3/conf/workers.template /opt/spark-3.5.6-bin-hadoop3/conf/workers
 
 #安装pyspark
-RUN pip3 install --default-timeout=100 /install/pyspark-4.0.0.tar.gz
+#RUN pip3 install --default-timeout=100 /install/pyspark-4.0.0.tar.gz
 
 
 #配置Hbase
-RUN rm /opt/hbase-2.4.18/lib/client-facing-thirdparty/slf4j-reload4j-1.7.33.jar
+#RUN rm /opt/hbase-2.5.11/lib/client-facing-thirdparty/slf4j-reload4j-1.7.33.jar
 
-#测试echo 'export HBASE_CLASSPATH=/opt/hadoop-3.3.6/etc/hadoop' >> /opt/hbase-2.4.18/conf/hbase-env.sh && \是否正确
-RUN echo 'export HBASE_MANAGES_ZK=false' >> /opt/hbase-2.4.18/conf/hbase-env.sh && \
-    echo 'export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64' >> /opt/hbase-2.4.18/conf/hbase-env.sh && \
-    echo 'export HBASE_CLASSPATH=/opt/hadoop-3.3.6/etc/hadoop' >> /opt/hbase-2.4.18/conf/hbase-env.sh && \
-    echo 'export HADOOP_HOME=/opt/hadoop-3.3.6' >> /opt/hbase-2.4.18/conf/hbase-env.sh && \
-    echo 'export HBASE_DISABLE_HADOOP_CLASSPATH_LOOKUP="true"' >> /opt/hbase-2.4.18/conf/hbase-env.sh
+RUN echo 'export HBASE_MANAGES_ZK=false' >> /opt/hbase-2.5.11/conf/hbase-env.sh && \
+    echo 'export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64' >> /opt/hbase-2.5.11/conf/hbase-env.sh && \
+    echo 'export HBASE_CLASSPATH=/opt/hadoop-3.3.6/etc/hadoop' >> /opt/hbase-2.5.11/conf/hbase-env.sh && \
+    echo 'export HADOOP_HOME=/opt/hadoop-3.3.6' >> /opt/hbase-2.5.11/conf/hbase-env.sh && \
+    echo 'export HBASE_DISABLE_HADOOP_CLASSPATH_LOOKUP="true"' >> /opt/hbase-2.5.11/conf/hbase-env.sh
 
 RUN sed -i '/<\/configuration>/i\
 <property>\n\
@@ -283,7 +283,7 @@ RUN sed -i '/<\/configuration>/i\
 </property>\n\
 <property>\n\
         <name>hbase.cluster.distributed</name>\n\
-        <value>false</value>\n\
+        <value>true</value>\n\
         <description>Hbase的运行模式。false是单机模式，true是分布式模式</description>\n\
 </property>\n\
 <property>\n\
@@ -304,18 +304,18 @@ RUN sed -i '/<\/configuration>/i\
 <property>\n\
         <name>hbase.zookeeper.property.clientPort</name>\n\
         <value>2181</value>\n\
-</property>\n\
+</property>\n\	
 <property>\n\
         <name>hbase.master.info.port</name>\n\
         <value>60010</value>\n\
 </property>\n\
-' /opt/hbase-2.4.18/conf/hbase-site.xml
+' /opt/hbase-2.5.11/conf/hbase-site.xml
 
-#RUN echo'' >> /opt/hbase-2.4.18/conf/regionservers
+#RUN echo'' >> /opt/hbase-2.5.11/conf/regionservers
 
 #拷贝Hadoop配置
-RUN cp /opt/hadoop-3.3.6/etc/hadoop/hdfs-site.xml /opt/hbase-2.4.18/conf
-RUN cp /opt/hadoop-3.3.6/etc/hadoop/core-site.xml /opt/hbase-2.4.18/conf
+RUN cp /opt/hadoop-3.3.6/etc/hadoop/hdfs-site.xml /opt/hbase-2.5.11/conf
+RUN cp /opt/hadoop-3.3.6/etc/hadoop/core-site.xml /opt/hbase-2.5.11/conf
 
 
 #配置Phoenix
@@ -326,10 +326,10 @@ RUN sed -i '/<\/configuration>/i\<property>\n\
 <property>\n\
   <name>phoenix.schema.mapSystemTablesToNamespace</name>\n\
   <value>true</value>\n\
-</property>' /opt/hbase-2.4.18/conf/hbase-site.xml
+</property>' /opt/hbase-2.5.11/conf/hbase-site.xml
 
-RUN /opt/hbase-2.4.18/bin/stop-hbase.sh && \
-    /opt/hbase-2.4.18/bin/start-hbase.sh
+RUN /opt/hbase-2.5.11/bin/stop-hbase.sh && \
+    /opt/hbase-2.5.11/bin/start-hbase.sh
 
 #RUN pip3 install phoenixdb
 
@@ -435,7 +435,10 @@ RUN cp /install/mysql-connector-java-8.0.18.jar /opt/apache-hive-4.0.1-bin/lib
 #RUN hadoop fs -mkdir -p /tmp/hive/ 
 #RUN hadoop fs -chmod -R 777 /tmp/hive 
 
-#RUN /opt/apache-hive-4.0.1-bin/bin/schematool -initSchema -dbType MySQL
+#RUN service mysql start && \
+    #mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root'; FLUSH PRIVILEGES;"
+
+#RUN /opt/apache-hive-4.0.1-bin/bin/schematool -initSchema -dbType mysql
 #可能需要写入脚本
 
 

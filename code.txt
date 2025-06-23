@@ -1,15 +1,16 @@
 docker-compose up -d
 
 docker-compose down --rmi local
+docker rmi -f bigdata-docker:v1.0
 
 
 docker build -t bigdata-docker:v1.0 .
 
-docker run -it --name bigdata-container     bigdata-docker:v1.0
+docker run -it --name bigdata-container  bigdata-docker:v1.0
 -p 2181:2181 -p 16010:16010 -p 16020:16020 -p 16030:16030 -p 8080:8080 -p 8085:8085 -p 9090:9090 -p 9095:9095 -p 16000:16000 -p 2222:22 -p 8040:8040 -p 8042:8042 -p 9870:9870  -p 9868:9868  -p 60010:60010 -p 2888:2888 -p 3888:3888 -p 8083:8083 -p : -p :
 2181 8040 8042 9870 9868 8080 9090 16020 16010 16000 60010 8085 9095 22 3888 3888 8081/8083
 
-
+find /opt/hadoop-3.3.6 -name "*slf4j*"
 
 
 #配置Hadoop
