@@ -154,6 +154,10 @@ RUN sed -i '/<\/configuration>/i\<property>\n\
         <name>io.file.buffer.size</name>  \n\
         <value>131072</value>\n\
     </property>\n\
+    <property>\n\
+        <name>hadoop.tmp.dir</name>\n\
+        <value>/opt/hadoop-3.3.6</value>\n\
+    </property>\n\
      <property>\n\
         <name>hadoop.proxyuser.root.hosts</name>\n\
         <value>*</value>\n\
@@ -192,11 +196,15 @@ RUN sed -i '/<\/configuration>/i\<property>\n\
     </property>\n\
     <property>\n\
         <name>dfs.namenode.name.dir</name>\n\
-<value>/opt/hadoop-3.3.6/namenode</value>\n\
+        <value>/opt/hadoop-3.3.6/namenode</value>\n\
     </property>\n\
     <property>\n\
         <name>dfs.blocksize</name>\n\
         <value>268435456</value>\n\
+    </property>\n\
+    <property>\n\
+        <name>dfs.webhdfs.enable</name>\n\
+        <value>true</value>\n\
     </property>\n\
     <property>\n\
         <name>dfs.namenode.handler.count</name>\n\
@@ -308,8 +316,7 @@ RUN sed -i '/<\/configuration>/i\
 <property>\n\
         <name>hbase.master.info.port</name>\n\
         <value>60010</value>\n\
-</property>\n\
-' /opt/hbase-2.5.11/conf/hbase-site.xml
+</property>' /opt/hbase-2.5.11/conf/hbase-site.xml
 
 #RUN echo'' >> /opt/hbase-2.5.11/conf/regionservers
 
@@ -328,8 +335,8 @@ RUN sed -i '/<\/configuration>/i\<property>\n\
   <value>true</value>\n\
 </property>' /opt/hbase-2.5.11/conf/hbase-site.xml
 
-RUN /opt/hbase-2.5.11/bin/stop-hbase.sh && \
-    /opt/hbase-2.5.11/bin/start-hbase.sh
+#RUN /opt/hbase-2.5.11/bin/stop-hbase.sh && \
+    #/opt/hbase-2.5.11/bin/start-hbase.sh
 
 #RUN pip3 install phoenixdb
 
@@ -455,6 +462,7 @@ RUN cp /install/mysql-connector-java-8.0.18.jar /opt/apache-hive-4.0.1-bin/lib
 #RUN sed -i 's/broker.id=0/broker.id=0/' /opt/kafka_2.12-3.7.2/config/server.properties#单节点不配
 
 RUN sed -i 's/zookeeper.connect=localhost:2181/zookeeper.connect=localhost:2181\/kafka/' /opt/kafka_2.12-3.7.2/config/server.properties
+COPY kf.sh /
 
 
 #配置Flume 
@@ -532,15 +540,16 @@ RUN ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa && \
 
 
 #清理安装包
-#RUN rm -rf /install
+RUN rm -rf /install
 
 
 # 设置工作目录
 WORKDIR /root
 
 #添加启动脚本
- #COPY entrypoint.sh /
+COPY entrypoint.sh /
+RUN chmod +x /entrypoint.sh
 
 # 定义默认命令
-#ENTRYPOINT ["/entrypoint.sh"]
-CMD ["/bin/bash"]
+ENTRYPOINT ["/entrypoint.sh"]
+#CMD ["/bin/bash"]
