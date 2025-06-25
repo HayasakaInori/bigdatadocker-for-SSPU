@@ -24,26 +24,45 @@ ENV PATH=$JAVA_HOME/bin:$PATH
 
 
 #创建文件夹
-RUN mkdir -p /opt && \
-    mkdir -p /install
+RUN mkdir -p /opt 
+#RUN mkdir -p /install
 
 
 # 从本地复制安装包到容器中
-COPY hadoop-3.3.6.tar.gz /install/ 
-COPY spark-3.5.6-bin-hadoop3.tgz /install/ 
-COPY hbase-2.5.11-bin.tar.gz /install/ 
-COPY kafka_2.12-3.7.2.tgz /install/ 
-COPY flink-1.17.2-bin-scala_2.12.tgz /install/ 
-COPY phoenix-hbase-2.5-5.2.1-bin.tar.gz /install/ 
-COPY phoenix-queryserver-6.0.0-bin.tar.gz /install/ 
-COPY apache-zookeeper-3.8.4-bin.tar.gz /install/ 
-COPY scala-2.12.0.tgz /install/ 
-COPY pyspark-4.0.0.tar.gz /install/ 
-COPY mysql57-community-release-el7-9.noarch.rpm /install/
-COPY mysql-connector-java-8.0.18.jar /install/
-COPY apache-hive-4.0.1-bin.tar.gz /install/ 
-COPY apache-flume-1.11.0-bin.tar.gz /install/ 
+#COPY hadoop-3.3.6.tar.gz /install/ 
+#COPY spark-3.5.6-bin-hadoop3.tgz /install/ 
+#COPY hbase-2.5.11-bin.tar.gz /install/ 
+#COPY kafka_2.12-3.7.2.tgz /install/ 
+#COPY flink-1.17.2-bin-scala_2.12.tgz /install/ 
+#COPY phoenix-hbase-2.5-5.2.1-bin.tar.gz /install/ 
+#COPY phoenix-queryserver-6.0.0-bin.tar.gz /install/ 
+#COPY apache-zookeeper-3.8.4-bin.tar.gz /install/ 
+#COPY scala-2.12.0.tgz /install/ 
+#COPY pyspark-4.0.0.tar.gz /install/ 
+#COPY mysql57-community-release-el7-9.noarch.rpm /install/
+#COPY mysql-connector-java-8.0.18.jar /install/
+#COPY apache-hive-4.0.1-bin.tar.gz /install/ 
+#COPY apache-flume-1.11.0-bin.tar.gz /install/ 
 #COPY Anaconda3-2023.09-0-Linux-x86_64.sh /install/
+
+#wget形式下载安装包
+RUN mkdir -p /install && cd /install && \
+    wget https://dlcdn.apache.org/hadoop/common/hadoop-3.3.6/hadoop-3.3.6.tar.gz && \
+    wget https://dlcdn.apache.org/spark/spark-3.5.6/spark-3.5.6-bin-hadoop3.tgz && \
+    wget https://dlcdn.apache.org/hbase/2.5.11/hbase-2.5.11-bin.tar.gz && \
+    wget https://dlcdn.apache.org/kafka/3.7.2/kafka_2.12-3.7.2.tgz && \
+    wget https://dlcdn.apache.org/flink/flink-1.17.2/flink-1.17.2-bin-scala_2.12.tgz && \
+    wget https://dlcdn.apache.org/phoenix/phoenix-5.2.1/phoenix-hbase-2.5-5.2.1-bin.tar.gz && \
+    wget https://dlcdn.apache.org/phoenix/phoenix-queryserver-6.0.0/phoenix-queryserver-6.0.0-bin.tar.gz && \
+    wget https://dlcdn.apache.org/zookeeper/zookeeper-3.8.4/apache-zookeeper-3.8.4-bin.tar.gz && \
+    wget https://github.com/scala/scala/archive/v2.12.0.tar.gz -O scala-2.12.0.tgz && \
+    wget https://repo.mysql.com/yum/mysql-5.7-community/el/7/x86_64/mysql57-community-release-el7-9.noarch.rpm && \
+    wget https://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-8.0.18.tar.gz && \
+    tar -xzf mysql-connector-java-8.0.18.tar.gz && \
+    cp mysql-connector-java-8.0.18/mysql-connector-java-8.0.18.jar . && \
+    rm -rf mysql-connector-java-8.0.18* && \
+    wget https://dlcdn.apache.org/hive/hive-4.0.1/apache-hive-4.0.1-bin.tar.gz && \
+    wget https://dlcdn.apache.org/flume/1.11.0/apache-flume-1.11.0-bin.tar.gz
 
 # 安装Hadoop
 RUN tar -xzf /install/hadoop-3.3.6.tar.gz -C /opt/ 
