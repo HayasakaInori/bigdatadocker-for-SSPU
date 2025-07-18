@@ -24,8 +24,8 @@ ENV PATH=$JAVA_HOME/bin:$PATH
 
 
 #创建文件夹
-RUN mkdir -p /opt 
-#RUN mkdir -p /install
+RUN mkdir -p /opt && \
+    mkdir -p /install
 
 
 # 从本地复制安装包到容器中
@@ -34,16 +34,16 @@ RUN mkdir -p /opt
 #COPY hbase-2.5.11-bin.tar.gz /install/ 
 #COPY kafka_2.12-3.7.2.tgz /install/ 
 #COPY flink-1.17.2-bin-scala_2.12.tgz /install/ 
-#COPY phoenix-hbase-2.5-5.2.1-bin.tar.gz /install/ 
+#COPY phoenix-hbase-2.5-5.1.3-bin.tar.gz /install/ 
 #COPY phoenix-queryserver-6.0.0-bin.tar.gz /install/ 
 #COPY apache-zookeeper-3.8.4-bin.tar.gz /install/ 
 #COPY scala-2.12.0.tgz /install/ 
-#COPY pyspark-4.0.0.tar.gz /install/ 
 #COPY mysql57-community-release-el7-9.noarch.rpm /install/
 #COPY mysql-connector-java-8.0.18.jar /install/
 #COPY apache-hive-4.0.1-bin.tar.gz /install/ 
 #COPY apache-flume-1.11.0-bin.tar.gz /install/ 
 #COPY Anaconda3-2023.09-0-Linux-x86_64.sh /install/
+#COPY pyspark-4.0.0.tar.gz /install/ 
 
 #wget形式下载安装包
 RUN mkdir -p /install && cd /install && \
@@ -52,7 +52,7 @@ RUN mkdir -p /install && cd /install && \
     wget https://dlcdn.apache.org/hbase/2.5.11/hbase-2.5.11-bin.tar.gz && \
     wget https://dlcdn.apache.org/kafka/3.7.2/kafka_2.12-3.7.2.tgz && \
     wget https://dlcdn.apache.org/flink/flink-1.17.2/flink-1.17.2-bin-scala_2.12.tgz && \
-    wget https://dlcdn.apache.org/phoenix/phoenix-5.2.1/phoenix-hbase-2.5-5.2.1-bin.tar.gz && \
+    wget https://dlcdn.apache.org/phoenix/phoenix-5.1.3/phoenix-hbase-2.5-5.1.3-bin.tar.gz && \
     wget https://dlcdn.apache.org/phoenix/phoenix-queryserver-6.0.0/phoenix-queryserver-6.0.0-bin.tar.gz && \
     wget https://dlcdn.apache.org/zookeeper/zookeeper-3.8.4/apache-zookeeper-3.8.4-bin.tar.gz && \
     wget https://github.com/scala/scala/archive/v2.12.0.tar.gz -O scala-2.12.0.tgz && \
@@ -101,10 +101,7 @@ ENV PATH=$PATH:$HBASE_HOME/bin
 
 
 #安装MySQL
-RUN rpm -ivh /install/mysql57-community-release-el7-9.noarch.rpm 
-RUN rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2022
 RUN apt-get update && apt-get install -y mysql-server
-RUN service mysql start
 #没用到yum不知道需不需要上面的下载
 
 
@@ -143,16 +140,15 @@ ENV PATH=$PATH:$FLUME_HOME/bin
 
 
 # 安装Phoenix 
-RUN tar -xzf /install/phoenix-hbase-2.5-5.2.1-bin.tar.gz -C /opt
+RUN tar -xzf /install/phoenix-hbase-2.5-5.1.3-bin.tar.gz -C /opt
 # 复制 JAR 文件到 HBase 库目录
-RUN cp /opt/phoenix-hbase-2.5-5.2.1-bin/phoenix-server-hbase-2.5-5.2.1.jar /opt/hbase-2.5.11/lib/ && \
-    cp /opt/phoenix-hbase-2.5-5.2.1-bin/phoenix-pherf-5.2.1.jar /opt/hbase-2.5.11/lib/
+RUN cp /opt/phoenix-hbase-2.5-5.1.3-bin/phoenix-pherf-5.1.3.jar $HBASE_HOME/lib/ && \
+    cp /opt/phoenix-hbase-2.5-5.1.3-bin/phoenix-server-hbase-2.5-5.1.3.jar $HBASE_HOME/lib/
 
 
 # 安装Queryserver
 RUN tar -xzf /install/phoenix-queryserver-6.0.0-bin.tar.gz -C /opt
-RUN cp /opt/phoenix-hbase-2.5-5.2.1-bin/phoenix-client-lite-hbase-2.5-5.2.1.jar /opt/phoenix-queryserver-6.0.0
-
+RUN cp /opt/phoenix-hbase-2.5-5.1.3-bin/phoenix-client-hbase-2.5-5.1.3.jar /opt/phoenix-queryserver-6.0.0
 
 
 #配置Hadoop
@@ -167,7 +163,7 @@ RUN echo 'export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64' >> /opt/hadoop-3.
 
 RUN sed -i '/<\/configuration>/i\<property>\n\
         <name>fs.defaultFS</name>\n\
-        <value>hdfs://localhost:9000</value>\n\
+        <value>hdfs://0.0.0.0:9000</value>\n\
     </property>\n\
     <property>\n\
         <name>io.file.buffer.size</name>  \n\
@@ -207,6 +203,18 @@ RUN sed -i '/<\/configuration>/i\<property>\n\
     <property>\n\
         <name>dfs.datanode.data.dir</name>\n\
         <value>/opt/hadoop-3.3.6/datanode</value>\n\
+    </property>\n\
+    <property>\n\
+        <name>yarn.resourcemanager.hostname</name>\n\
+        <value>0.0.0.0</value>\n\
+    </property>\n\
+    <property>\n\
+        <name>yarn.resourcemanager.bind-host</name>\n\
+        <value>0.0.0.0</value>\n\
+    </property>\n\
+    <property>\n\
+        <name>yarn.resourcemanager.webapp.address</name>\n\
+        <value>0.0.0.0:8088</value>\n\
     </property>' /opt/hadoop-3.3.6/etc/hadoop/yarn-site.xml
 
 RUN sed -i '/<\/configuration>/i\<property>\n\
@@ -230,6 +238,14 @@ RUN sed -i '/<\/configuration>/i\<property>\n\
         <value>100</value>\n\
     </property>\n\
     <property>\n\
+        <name>dfs.namenode.http-bind-host</name>\n\
+        <value>0.0.0.0</value>\n\
+    </property>\n\
+    <property>\n\
+        <name>dfs.datanode.http-bind-host</name>\n\
+        <value>0.0.0.0</value>\n\
+    </property>\n\
+    <property>\n\
         <name>dfs.datanode.data.dir</name>\n\
         <value>/opt/hadoop-3.3.6/datanode</value>\n\
     </property>' /opt/hadoop-3.3.6/etc/hadoop/hdfs-site.xml
@@ -247,7 +263,7 @@ RUN sed -i '/<\/configuration>/i\<property>\n\
     <!--指定YARN集群的管理者（ResourceManager）的地址-->\n\
     <property>\n\
         <name>yarn.resourcemanager.hostname</name>\n\
-        <value>localhost</value>\n\
+        <value>0.0.0.0</value>\n\
     </property>' /opt/hadoop-3.3.6/etc/hadoop/yarn-site.xml
 #ssh要自启动
 
@@ -294,7 +310,7 @@ RUN cp /opt/spark-3.5.6-bin-hadoop3/conf/workers.template /opt/spark-3.5.6-bin-h
 
 
 #配置Hbase
-#RUN rm /opt/hbase-2.5.11/lib/client-facing-thirdparty/slf4j-reload4j-1.7.33.jar
+#RUN rm /opt/hbase-2.5.11/lib/client-facing-thirdparty/log4j-slf4j-impl-2.17.2.jar
 
 RUN echo 'export HBASE_MANAGES_ZK=false' >> /opt/hbase-2.5.11/conf/hbase-env.sh && \
     echo 'export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64' >> /opt/hbase-2.5.11/conf/hbase-env.sh && \
@@ -331,7 +347,15 @@ RUN sed -i '/<\/configuration>/i\
 <property>\n\
         <name>hbase.zookeeper.property.clientPort</name>\n\
         <value>2181</value>\n\
-</property>\n\	
+</property>\n\
+<property>\n\
+        <name>hbase.master.ipc.address</name>\n\
+        <value>0.0.0.0</value>\n\
+</property>\n\
+<property>\n\
+        <name>hbase.regionserver.ipc.address</name>\n\
+        <value>0.0.0.0</value>\n\
+</property>\n\
 <property>\n\
         <name>hbase.master.info.port</name>\n\
         <value>60010</value>\n\
@@ -361,19 +385,19 @@ RUN sed -i '/<\/configuration>/i\<property>\n\
 
 
 #配置MySQL
-RUN sed -i 's/^# *pid-file *=.*/pid-file      = \/var\/run\/mysqld\/mysqld.pid/' /etc/mysql/mysql.conf.d/mysqld.cnf && \
-    sed -i 's/^# *socket *=.*/socket = \/var\/run\/mysqld\/mysqld.sock/' /etc/mysql/mysql.conf.d/mysqld.cnf && \
-    sed -i 's/^# *port *=.*/port           = 3306/' /etc/mysql/mysql.conf.d/mysqld.cnf && \
-    sed -i 's/^# *datadir *=.*/datadir        = \/var\/lib\/mysql/' /etc/mysql/mysql.conf.d/mysqld.cnf && \
-    sed -i 's/^bind-address *=.*/bind-address            = 0.0.0.0/' /etc/mysql/mysql.conf.d/mysqld.cnf && \
-    sed -i 's/^mysqlx-bind-address *=.*/mysqlx-bind-address     = 0.0.0.0/' /etc/mysql/mysql.conf.d/mysqld.cnf
+RUN echo "[mysqld]">> /etc/mysql/my.cnf && \
+    echo "pid-file      = /var/run/mysqld/mysqld.pid" >> /etc/mysql/my.cnf && \
+    echo "socket = /var/run/mysqld/mysqld.sock" >> /etc/mysql/my.cnf && \
+    echo "port           = 3306" >> /etc/mysql/my.cnf && \
+    echo "datadir        = /var/lib/mysql" >> /etc/mysql/my.cnf && \
+    echo "bind-address            = 0.0.0.0" >> /etc/mysql/my.cnf && \
+    echo "mysqlx-bind-address     = 0.0.0.0" >> /etc/mysql/my.cnf && \
+    echo "" >> /etc/mysql/my.cnf && \
+    echo "[client]" >> /etc/mysql/my.cnf && \
+    echo "port=3306" >> /etc/mysql/my.cnf && \
+    echo "socket = /var/run/mysqld/mysqld.sock" >> /etc/mysql/my.cnf
 
-RUN echo "" >> /etc/mysql/mysql.conf.d/mysqld.cnf && \
-    echo "[client]" >> /etc/mysql/mysql.conf.d/mysqld.cnf && \
-    echo "port=3306" >> /etc/mysql/mysql.conf.d/mysqld.cnf && \
-    echo "socket = /var/run/mysqld/mysqld.sock" >> /etc/mysql/mysql.conf.d/mysqld.cnf
-
-#echo "skip-grant-tables" >> /etc/mysql/mysql.conf.d/mysqld.cnf && \不能加，加了不监听端口
+#echo "skip-grant-tables" >> /etc/mysql/ my.cnf && \不能加，加了不监听端口
 
 
 #还有一个启动脚本
@@ -480,14 +504,17 @@ RUN cp /install/mysql-connector-java-8.0.18.jar /opt/apache-hive-4.0.1-bin/lib
 
 #RUN sed -i 's/broker.id=0/broker.id=0/' /opt/kafka_2.12-3.7.2/config/server.properties#单节点不配
 
+RUN sed -i 's/#listeners=PLAINTEXT:\/\/:9092/listeners=PLAINTEXT:\/\/:9092/' /opt/kafka_2.12-3.7.2/config/server.properties
+
 RUN sed -i 's/zookeeper.connect=localhost:2181/zookeeper.connect=localhost:2181\/kafka/' /opt/kafka_2.12-3.7.2/config/server.properties
+
 COPY kf.sh /
 
 
 #配置Flume 
 RUN cp /opt/apache-flume-1.11.0-bin/conf/flume-env.sh.template /opt/apache-flume-1.11.0-bin/conf/flume-env.sh
 
-RUN echo 'JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64' >> /opt/apache-flume-1.11.0-bin/conf/flume-env.sh
+RUN echo 'export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64' >> /opt/apache-flume-1.11.0-bin/conf/flume-env.sh
 
 RUN echo "# 定义这个agent的名称" > /opt/apache-flume-1.11.0-bin/conf/hdfs-avro.conf && \
      echo "a1.sources = r1" >> /opt/apache-flume-1.11.0-bin/conf/hdfs-avro.conf && \
@@ -526,7 +553,7 @@ RUN sed -i 's/jobmanager.rpc.address: localhost/jobmanager.rpc.address: 0.0.0.0/
     sed -i 's/#rest.port: 8081/rest.port: 8083/' /opt/flink-1.17.2/conf/flink-conf.yaml && \
     sed -i 's/rest.address: localhost/rest.address: 0.0.0.0/' /opt/flink-1.17.2/conf/flink-conf.yaml && \
     sed -i 's/rest.bind-address: localhost/rest.bind-address: 0.0.0.0/' /opt/flink-1.17.2/conf/flink-conf.yaml && \
-    sed -i 's/#rest.bind-port: 8083-8090/rest.bind-port: 8080-8090/' /opt/flink-1.17.2/conf/flink-conf.yaml
+    sed -i 's/#rest.bind-port: 8080-8090/rest.bind-port: 8083-8090/' /opt/flink-1.17.2/conf/flink-conf.yaml
 #不知道为什么8080-8090不行
 
 #不知道有没有影响
@@ -540,23 +567,9 @@ RUN ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa && \
     cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys && \
     chmod 0600 ~/.ssh/authorized_keys
 
-#启动后台
-#RUN service ssh start
-#RUN hdfs namenode -format && \
-    #start-all.sh && \
-    #zkServer.sh start && \
-    #/opt/spark-3.5.6-bin-hadoop3/sbin/start-all.sh 
-#可能需要写入脚本
-
 #上传jar
 #RUN hdfs dfs -mkdir -p /user/spark/directory && \
     #hdfs dfs -put /opt/spark-3.5.6-bin-hadoop3/jars/* /user/spark/directory
-
-
-
-#配置启动脚本 
-#RUN vim entrypoint.sh
-
 
 #清理安装包
 RUN rm -rf /install
@@ -571,4 +584,3 @@ RUN chmod +x /entrypoint.sh
 
 # 定义默认命令
 ENTRYPOINT ["/entrypoint.sh"]
-#CMD ["/bin/bash"]

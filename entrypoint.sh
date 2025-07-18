@@ -49,25 +49,35 @@ main() {
     
     # 启动HBase
     start_service "HBase" "/opt/hbase-2.5.11/bin/start-hbase.sh" || exit 1
+    start_service "thrift" "/opt/hbase-2.5.11/bin/hbase-daemon.sh start thrift" || exit 1
     
     # 启动Flink
     start_service "Flink" "/opt/flink-1.17.2/bin/start-cluster.sh" || exit 1
     
     # 启动Phoenix Query Server
-    start_service "Phoenix Query Server" "python2 /opt/phoenix-queryserver-6.0.0/bin/queryserver.py start 2>&1 | tee /tmp/phoenix-start.log"
+    start_service "Phoenix Query Server" "python2 /opt/phoenix-queryserver-6.0.0/bin/queryserver.py start > /dev/null 2>&1 &" || exit 1
     
     # 启动Kafka
     start_service "Kafka" "/kf.sh start" || exit 1
     
     # 配置MySQL并初始化Hive元数据
-    start_service "MySQL" "service mysql start" || exit 1
+        start_service "MySQL" "service mysql start" || exit 1
+
     log "Configuring MySQL..."
-    mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root'; FLUSH PRIVILEGES;" && \
-    /opt/apache-hive-4.0.1-bin/bin/schematool -initSchema -dbType mysql || {
-        log "Failed to configure MySQL or initialize Hive metastore."
-        exit 1
-    }
-    
+    mysql -u root -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root';"
+    mysql -u root -proot -e "CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY 'root';"
+    mysql -u root -proot -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;"
+    mysql -u root -proot -e "FLUSH PRIVILEGES;"
+    if [ ! -f /tmp/metastore_initialized ]; then
+        echo "Initializing Hive metastore database..."
+        schematool -dbType mysql -initSchema \
+        -verbose
+        touch /tmp/metastore_initialized
+        echo "Hive metastore initialized"
+    fi
+    start_service "HiveMetastore" "nohup hive --service metastore > hiveserver2.log 2>&1 &" || exit 1
+    start_service "Hive" "hive --service hiveserver2 > hiveserver2.log 2>&1 &"  || exit 1
+
     log "All services started successfully!"
     
     # 保持容器运行

@@ -7,6 +7,12 @@ HOSTS=("localhost")  # 可扩展为多节点数组
 TIMEOUT=60           # 等待超时（秒）
 LOG_FILE="/var/log/kafka-server.log"
 
+HOST_IP=$(getent ahostsv4 host.docker.internal | awk '{print $1}' | head -n1)
+#LISTENER="PLAINTEXT://${HOST_IP}:9092"
+LISTENER="PLAINTEXT://localhost:9092"
+
+sed -i "s|^#advertised.listeners=.*|advertised.listeners=${LISTENER}|" /opt/kafka_2.12-3.7.2/config/server.properties
+
 # 日志函数
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
