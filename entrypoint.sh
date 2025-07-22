@@ -42,13 +42,17 @@ main() {
     start_service "Hadoop" "start-all.sh" || exit 1
     
     # 启动Zookeeper
-    start_service "Zookeeper" "zkServer.sh start" || exit 1
+    start_service "Zookeeper" "zkServer.sh stop" || exit 1
+    sleep 2
+    zkServer.sh start || exit 1
     
     # 启动Spark
     start_service "Spark" "/opt/spark-3.5.6-bin-hadoop3/sbin/start-all.sh" || exit 1
     
     # 启动HBase
-    start_service "HBase" "/opt/hbase-2.5.11/bin/start-hbase.sh" || exit 1
+    if ! pgrep -f "hbase.master.HMaster"; then
+        start_service "HBase" "/opt/hbase-2.5.11/bin/start-hbase.sh" || exit 1
+    fi
     start_service "thrift" "/opt/hbase-2.5.11/bin/hbase-daemon.sh start thrift" || exit 1
     
     # 启动Flink
